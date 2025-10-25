@@ -25,7 +25,7 @@ public class CheckVerificationController {
     }
 
 
-    // 1. Endpoint pour obtenir l'état de vérification actuel de l'utilisateur
+    // 1. Endpoint pour obtenir l'état de vérification actuel de l'utilisateur (Crée si non existant)
     @GetMapping("/status")
     public ResponseEntity<?> getVerificationStatus(HttpSession session) {
         Long userId = (Long) session.getAttribute("USER_ID");
@@ -36,12 +36,37 @@ public class CheckVerificationController {
             );
         }
 
+        // Utilise la méthode qui crée l'enregistrement s'il est manquant
         CheckVerification verification = checkVerificationService.getOrCreateVerification(userId);
 
         return ResponseEntity.ok(verification);
     }
 
-    // 2. Endpoint pour mettre à jour une seule étape
+    // 🚨 3. NOUVEL ENDPOINT : Extrait uniquement l'état de vérification existant
+    @GetMapping("/retrieve-status")
+    public ResponseEntity<?> retrieveVerificationStatus(HttpSession session) {
+        Long userId = (Long) session.getAttribute("USER_ID");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                    Map.of("message", "Utilisateur non authentifié.")
+            );
+        }
+
+        // Utilise la méthode qui extrait seulement l'enregistrement s'il existe
+        Optional<CheckVerification> verificationOpt = checkVerificationService.getVerificationByIduser(userId);
+
+        if (verificationOpt.isPresent()) {
+            return ResponseEntity.ok(verificationOpt.get());
+        } else {
+            // L'utilisateur n'a pas encore d'enregistrement de vérification (normal s'il vient de s'inscrire)
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    Map.of("message", "Aucun enregistrement de vérification trouvé pour cet utilisateur. Veuillez initialiser.")
+            );
+        }
+    }
+
+    // 2. Endpoint pour mettre à jour une seule étape (Inchangé)
     @PostMapping("/update")
     public ResponseEntity<?> updateStatus(@RequestBody StatusUpdateRequest request, HttpSession session) {
         Long userId = (Long) session.getAttribute("USER_ID");
