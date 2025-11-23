@@ -1,6 +1,6 @@
 package MyLb.BackEnd.Controller;
 
-import MyLb.BackEnd.Model.CheckVerification;
+import MyLb.BackEnd.Model.Entities.CheckVerification;
 import MyLb.BackEnd.Service.CheckVerificationService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,6 +1,6 @@
 package MyLb.BackEnd.Controller;
 
-import MyLb.BackEnd.Model.UserIdentity;
+import MyLb.BackEnd.Model.Entities.UserIdentity;
 import MyLb.BackEnd.Service.UserIdentityService;
 // 🚨 CORRECTION: Utilise le service de vérification correct fourni
 import MyLb.BackEnd.Service.CheckVerificationService;

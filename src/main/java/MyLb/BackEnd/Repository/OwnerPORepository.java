@@ -1,13 +1,41 @@
 package MyLb.BackEnd.Repository;
 
-import MyLb.BackEnd.Model.OwnerPO;
+import MyLb.BackEnd.Model.Entities.OwnerPO;
+import MyLb.BackEnd.Model.Entities.OwnerPOId;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
 import java.util.Optional;
 
-// L'ID utilisé ici (Long) est le clientId de l'OwnerPO
-public interface OwnerPORepository extends JpaRepository<OwnerPO, Long> {
+@Repository
+public interface OwnerPORepository extends JpaRepository<OwnerPO, OwnerPOId> {
 
-    // Méthode pour trouver l'OwnerPO à partir de l'ID de la Compagnie
-    // (Cette méthode dépend de la relation dans le modèle OwnerPO/CompanyApplication)
-    Optional<OwnerPO> findByCompanyApplicationCompanyApplicationId(Long companyId);
+    /**
+     * Trouver tous les OwnerPO d'un client spécifique
+     */
+    List<OwnerPO> findByClientId(Long clientId);
+
+    /**
+     * Trouver tous les OwnerPO d'une company spécifique
+     */
+    List<OwnerPO> findByCompanyId(Long companyId);
+
+    /**
+     * Vérifier si un client est propriétaire d'une company spécifique
+     */
+    boolean existsByClientIdAndCompanyId(Long clientId, Long companyId);
+
+    /**
+     * Trouver un OwnerPO spécifique par clientId et companyId
+     */
+    Optional<OwnerPO> findByClientIdAndCompanyId(Long clientId, Long companyId);
+
+    /**
+     * Compter le nombre de companies d'un client
+     */
+    @Query("SELECT COUNT(o) FROM OwnerPO o WHERE o.clientId = :clientId")
+    long countCompaniesByClientId(@Param("clientId") Long clientId);
 }

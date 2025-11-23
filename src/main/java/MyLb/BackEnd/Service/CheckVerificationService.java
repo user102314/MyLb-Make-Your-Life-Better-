@@ -1,6 +1,6 @@
 package MyLb.BackEnd.Service;
 
-import MyLb.BackEnd.Model.CheckVerification;
+import MyLb.BackEnd.Model.Entities.CheckVerification;
 import MyLb.BackEnd.Repository.CheckVerificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

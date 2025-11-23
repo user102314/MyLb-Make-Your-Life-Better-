@@ -1,33 +1,88 @@
 package MyLb.BackEnd.ServiceImp;
 
-import MyLb.BackEnd.Model.Client;
+import MyLb.BackEnd.Model.Estnum.ActionType;
+import MyLb.BackEnd.Model.Entities.Client;
 import MyLb.BackEnd.Repository.ClientRepository;
+import MyLb.BackEnd.Repository.ClientSecurityRepository;
+import MyLb.BackEnd.Service.ClientActionService;
+import MyLb.BackEnd.Service.ClientSecurityService;
 import MyLb.BackEnd.Service.ClientService;
+import MyLb.BackEnd.Service.GoogleAuthService;
+import MyLb.BackEnd.Service.WalletService; // 🆕 IMPORT AJOUTÉ
 import MyLb.BackEnd.dto.ClientUpdateRequest;
+import MyLb.BackEnd.dto.PasswordChangeRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
-import java.util.NoSuchElementException; // ⬅️ CORRECTION: Import manquant ajouté
+import java.util.NoSuchElementException;
 
 @Service
 public class ClientServiceImpl implements ClientService {
 
     private final ClientRepository clientRepository;
+    private final ClientSecurityRepository clientSecurityRepository;
+    private final ClientSecurityService clientSecurityService;
+    private final GoogleAuthService googleAuthService;
+    private final ClientActionService clientActionService;
+    private final WalletService walletService; // 🆕 DÉCLARATION AJOUTÉE
 
     @Autowired
-    public ClientServiceImpl(ClientRepository clientRepository) {
+    public ClientServiceImpl(
+            ClientRepository clientRepository,
+            ClientSecurityRepository clientSecurityRepository,
+            ClientSecurityService clientSecurityService,
+            GoogleAuthService googleAuthService,
+            ClientActionService clientActionService,
+            WalletService walletService // 🆕 INJECTION AJOUTÉE
+    ) {
         this.clientRepository = clientRepository;
+        this.clientSecurityRepository = clientSecurityRepository;
+        this.clientSecurityService = clientSecurityService;
+        this.googleAuthService = googleAuthService;
+        this.clientActionService = clientActionService;
+        this.walletService = walletService; // 🆕 INITIALISATION AJOUTÉE
     }
-
-    // --- Méthodes d'Authentification / Vérification ---
 
     @Override
     public Long authenticate(String email, String password) {
-        // Utilisation de la requête explicite du Repository
-        Optional<Client> client = clientRepository.findByEmailAndPassword(email, password);
-        // Retourne l'ID si trouvé, sinon null (cause de l'erreur 401)
-        return client.map(Client::getClientId).orElse(null);
+        Optional<Client> clientOpt = clientRepository.findByEmail(email);
+
+        if (clientOpt.isPresent()) {
+            Client client = clientOpt.get();
+
+            if (client.getPassword().equals(password)) {
+                clientActionService.logAction(client.getClientId(), ActionType.LOGIN_SUCCESS, "Connexion réussie.");
+                return client.getClientId();
+            } else {
+                clientActionService.logAction(client.getClientId(), ActionType.SECURITY_ALERT, "Tentative de connexion échouée (Mot de passe incorrect).");
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    @Override
+    @Transactional
+    public Client saveClientWithWallet(Client client) {
+        System.out.println("💾 [ClientService] Sauvegarde du client avec création automatique du wallet");
+
+        // 1. Sauvegarder le client
+        Client savedClient = clientRepository.save(client);
+        System.out.println("✅ [ClientService] Client sauvegardé avec ID: " + savedClient.getClientId());
+
+        // 2. Créer le wallet automatiquement
+        try {
+            walletService.createWalletIfNotExists(savedClient.getClientId());
+            System.out.println("💰 [ClientService] Wallet créé avec succès pour le client ID: " + savedClient.getClientId());
+        } catch (Exception e) {
+            System.err.println("❌ [ClientService] Erreur lors de la création du wallet: " + e.getMessage());
+            throw new RuntimeException("Erreur lors de la création du wallet", e);
+        }
+
+        return savedClient;
     }
 
     @Override
@@ -35,45 +90,15 @@ public class ClientServiceImpl implements ClientService {
         return clientRepository.findByEmail(email).isEmpty();
     }
 
-    // --- Méthodes CRUD ---
-
-    // Création/Mise à jour (Save)
     @Override
+    @Transactional
     public Client saveClient(Client client) {
         return clientRepository.save(client);
     }
 
-    // Lecture (Find by ID) - Reste Optional<Client> dans l'implémentation
     @Override
     public Optional<Client> getClientById(Long clientId) {
         return clientRepository.findById(clientId);
-    }
-
-    @Override
-    public Client updateClientProfile(Long userId, ClientUpdateRequest updateRequest) {
-        // 1. Trouver l'utilisateur existant et déballer l'Optional.
-        // Si l'Optional est vide, lance une exception.
-        Client existingClient = getClientById(userId)
-                .orElseThrow(() -> new NoSuchElementException("Client non trouvé avec l'ID: " + userId)); // ⬅️ CORRECTION
-
-        // 2. Appliquer les mises à jour (vérifiez si le champ n'est pas null dans la requête)
-        if (updateRequest.getFirstName() != null) {
-            existingClient.setFirstName(updateRequest.getFirstName());
-        }
-        if (updateRequest.getLastName() != null) {
-            existingClient.setLastName(updateRequest.getLastName());
-        }
-        if (updateRequest.getEmail() != null) {
-            existingClient.setEmail(updateRequest.getEmail());
-        }
-
-        // 3. Gérer le changement de mot de passe (si fourni)
-        if (updateRequest.getPassword() != null && !updateRequest.getPassword().isEmpty()) {
-            existingClient.setPassword(updateRequest.getPassword());
-        }
-
-        // 4. Sauvegarder l'entité mise à jour
-        return clientRepository.save(existingClient);
     }
 
     @Override
@@ -81,20 +106,24 @@ public class ClientServiceImpl implements ClientService {
         return clientRepository.findAll();
     }
 
-    // Suppression (Delete)
     @Override
     public void deleteClient(Long clientId) {
         clientRepository.deleteById(clientId);
     }
 
-    // Modification (Update)
     @Override
-    public Client updateClient(Long clientId, Client clientDetails) {
-        // 1. Trouver l'utilisateur existant et déballer l'Optional.
-        Client existingClient = getClientById(clientId)
-                .orElseThrow(() -> new NoSuchElementException("Client non trouvé avec l'ID: " + clientId)); // ⬅️ CORRECTION
+    public String getEmailById(Long clientId) {
+        return getClientById(clientId)
+                .map(Client::getEmail)
+                .orElseThrow(() -> new NoSuchElementException("Client introuvable avec l'ID: " + clientId));
+    }
 
-        // 2. Mise à jour des champs non-sensibles
+    @Override
+    @Transactional
+    public Client updateClient(Long clientId, Client clientDetails) {
+        Client existingClient = getClientById(clientId)
+                .orElseThrow(() -> new NoSuchElementException("Client non trouvé avec l'ID: " + clientId));
+
         existingClient.setFirstName(clientDetails.getFirstName());
         existingClient.setLastName(clientDetails.getLastName());
         existingClient.setBirthDate(clientDetails.getBirthDate());
@@ -105,6 +134,92 @@ public class ClientServiceImpl implements ClientService {
             existingClient.setPassword(clientDetails.getPassword());
         }
 
-        return clientRepository.save(existingClient);
+        Client updatedClient = clientRepository.save(existingClient);
+        clientActionService.logAction(clientId, ActionType.PROFILE_UPDATE, "Mise à jour d'informations générales.");
+
+        return updatedClient;
+    }
+
+    @Override
+    @Transactional
+    public Client updateClientProfile(Long userId, ClientUpdateRequest updateRequest) {
+        Client existingClient = clientRepository.findById(userId)
+                .orElseThrow(() -> new NoSuchElementException("Client non trouvé avec l'ID: " + userId));
+
+        boolean isProfileChanged = false;
+
+        if (updateRequest.getFirstName() != null && !updateRequest.getFirstName().equals(existingClient.getFirstName())) {
+            existingClient.setFirstName(updateRequest.getFirstName());
+            isProfileChanged = true;
+        }
+        if (updateRequest.getLastName() != null && !updateRequest.getLastName().equals(existingClient.getLastName())) {
+            existingClient.setLastName(updateRequest.getLastName());
+            isProfileChanged = true;
+        }
+        if (updateRequest.getEmail() != null && !updateRequest.getEmail().equals(existingClient.getEmail())) {
+            existingClient.setEmail(updateRequest.getEmail());
+            isProfileChanged = true;
+        }
+
+        if (updateRequest.getPassword() != null && !updateRequest.getPassword().isEmpty()) {
+            existingClient.setPassword(updateRequest.getPassword());
+            isProfileChanged = true;
+        }
+
+        Client updatedClient = clientRepository.save(existingClient);
+
+        if (isProfileChanged) {
+            clientActionService.logAction(userId, ActionType.PROFILE_UPDATE, "Mise à jour des informations de profil (Nom/Email/etc.).");
+        }
+
+        return updatedClient;
+    }
+
+    @Override
+    @Transactional
+    public boolean changePassword(Long userId, PasswordChangeRequest request) {
+        Client client = clientRepository.findById(userId)
+                .orElseThrow(() -> new NoSuchElementException("Client not found with ID: " + userId));
+
+        String currentPassword = request.getCurrentPassword();
+        String newPassword = request.getNewPassword();
+        String authCode = request.getAuthCode();
+
+        if (!client.getPassword().equals(currentPassword)) {
+            clientActionService.logAction(userId, ActionType.SECURITY_ALERT, "Tentative de changement de mot de passe échouée (ancien mot de passe invalide).");
+            return false;
+        }
+
+        Optional<String> secretOpt = clientSecurityService.getGoogleAuthSecret(userId);
+
+        if (clientSecurityService.is2FaEnabled(userId)) {
+
+            if (secretOpt.isEmpty() || authCode == null || authCode.length() != 6) {
+                throw new SecurityException("Authentification à deux facteurs requise.");
+            }
+
+            try {
+                int code = Integer.parseInt(authCode);
+                boolean isVerified = googleAuthService.isCodeValid(secretOpt.get(), code);
+
+                if (!isVerified) {
+                    clientActionService.logAction(userId, ActionType.SECURITY_ALERT, "Tentative de changement de mot de passe échouée (Code 2FA invalide).");
+                    throw new SecurityException("Code Google Authenticator invalide.");
+                }
+            } catch (NumberFormatException e) {
+                throw new SecurityException("Le code 2FA doit être un nombre.");
+            }
+        }
+
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            return true;
+        }
+
+        client.setPassword(newPassword);
+        clientRepository.save(client);
+
+        clientActionService.logAction(userId, ActionType.PASSWORD_CHANGE, "Le mot de passe a été modifié avec succès.");
+
+        return true;
     }
 }

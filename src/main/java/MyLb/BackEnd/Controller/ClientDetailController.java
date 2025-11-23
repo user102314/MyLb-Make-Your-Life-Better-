@@ -1,6 +1,6 @@
 package MyLb.BackEnd.Controller;
 
-import MyLb.BackEnd.Model.Client;
+import MyLb.BackEnd.Model.Entities.Client;
 import MyLb.BackEnd.Service.ClientService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

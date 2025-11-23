@@ -1,6 +1,6 @@
 package MyLb.BackEnd.Repository;
 
-import MyLb.BackEnd.Model.Client;
+import MyLb.BackEnd.Model.Entities.Client;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 

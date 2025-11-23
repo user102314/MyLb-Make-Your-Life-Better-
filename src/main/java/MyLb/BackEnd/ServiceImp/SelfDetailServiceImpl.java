@@ -1,6 +1,6 @@
 package MyLb.BackEnd.ServiceImp;
 
-import MyLb.BackEnd.Model.SelfDetail;
+import MyLb.BackEnd.Model.Entities.SelfDetail;
 import MyLb.BackEnd.Repository.SelfDetailRepository;
 import MyLb.BackEnd.Service.SelfDetailService;
 import org.springframework.beans.factory.annotation.Autowired; // ⬅️ NOUVEL IMPORT NÉCESSAIRE

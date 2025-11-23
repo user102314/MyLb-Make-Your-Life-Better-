@@ -1,6 +1,6 @@
 package MyLb.BackEnd.Service;
 
-import MyLb.BackEnd.Model.UserIdentity;
+import MyLb.BackEnd.Model.Entities.UserIdentity;
 import MyLb.BackEnd.Repository.UserIdentityRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

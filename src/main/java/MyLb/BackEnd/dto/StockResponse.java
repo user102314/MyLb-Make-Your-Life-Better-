@@ -1,30 +1,30 @@
 package MyLb.BackEnd.dto;
 
 public class StockResponse {
-
     private Long idStock;
     private String nomStock;
     private Integer stockDisponible;
     private Integer stockReste;
     private Double prixStock;
-    // L'attribut 'ownerId' est supprimé ici.
+    private String etat;
+    private Long idComponey;
+    private Long ownerId;
 
-    // ----------------------------------------------------------------------
-    // Constructeur pour mapper l'entité Stock vers le DTO
-    // ----------------------------------------------------------------------
-    // Suppression du paramètre ownerId dans le constructeur
-    public StockResponse(Long idStock, String nomStock, Integer stockDisponible, Integer stockReste, Double prixStock) {
+    // Constructeur complet
+    public StockResponse(Long idStock, String nomStock, Integer stockDisponible,
+                         Integer stockReste, Double prixStock, String etat,
+                         Long idComponey, Long ownerId) {
         this.idStock = idStock;
         this.nomStock = nomStock;
         this.stockDisponible = stockDisponible;
         this.stockReste = stockReste;
         this.prixStock = prixStock;
+        this.etat = etat;
+        this.idComponey = idComponey;
+        this.ownerId = ownerId;
     }
 
-    // ----------------------------------------------------------------------
-    // Getters et Setters (manuels)
-    // ----------------------------------------------------------------------
-
+    // Getters et Setters
     public Long getIdStock() {
         return idStock;
     }
@@ -65,5 +65,27 @@ public class StockResponse {
         this.prixStock = prixStock;
     }
 
-    // Les accesseurs getOwnerId() et setOwnerId() sont supprimés.
+    public String getEtat() {
+        return etat;
+    }
+
+    public void setEtat(String etat) {
+        this.etat = etat;
+    }
+
+    public Long getIdComponey() {
+        return idComponey;
+    }
+
+    public void setIdComponey(Long idComponey) {
+        this.idComponey = idComponey;
+    }
+
+    public Long getOwnerId() {
+        return ownerId;
+    }
+
+    public void setOwnerId(Long ownerId) {
+        this.ownerId = ownerId;
+    }
 }

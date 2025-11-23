@@ -1,9 +1,10 @@
 package MyLb.BackEnd.Controller;
 
-import MyLb.BackEnd.Model.Client;
-import MyLb.BackEnd.Model.SelfDetail;
+import MyLb.BackEnd.Model.Entities.Client;
+import MyLb.BackEnd.Model.Entities.SelfDetail;
 import MyLb.BackEnd.Service.ClientService;
-import MyLb.BackEnd.Service.CheckVerificationService; // 🚨 NOUVELLE IMPORTATION
+import MyLb.BackEnd.Service.CheckVerificationService;
+import MyLb.BackEnd.Service.WalletService; // 🆕 NOUVELLE IMPORTATION
 import MyLb.BackEnd.dto.SignUpRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -18,12 +19,16 @@ import java.io.IOException;
 public class SignUpController {
 
     private final ClientService clientService;
-    private final CheckVerificationService checkVerificationService; // 🚨 NOUVELLE DÉCLARATION
+    private final CheckVerificationService checkVerificationService;
+    private final WalletService walletService; // 🆕 NOUVELLE DÉCLARATION
 
     @Autowired
-    public SignUpController(ClientService clientService, CheckVerificationService checkVerificationService) {
+    public SignUpController(ClientService clientService,
+                            CheckVerificationService checkVerificationService,
+                            WalletService walletService) { // 🆕 NOUVELLE INJECTION
         this.clientService = clientService;
-        this.checkVerificationService = checkVerificationService; // 🚨 NOUVELLE INJECTION
+        this.checkVerificationService = checkVerificationService;
+        this.walletService = walletService; // 🆕 INITIALISATION
     }
 
     /**
@@ -42,7 +47,7 @@ public class SignUpController {
         }
 
         try {
-            // ... Préparation des entités Client et SelfDetail (Aucun changement) ...
+            // Préparation des entités Client et SelfDetail
             String email = signUpRequest.getEmail();
             String customSelfDetailId = email + "IdSelfDetail";
 
@@ -64,11 +69,25 @@ public class SignUpController {
 
             // 1. Sauvegarder le Client
             Client savedClient = clientService.saveClient(client);
+            Long clientId = savedClient.getClientId(); // 🆕 RÉCUPÉRATION DE L'ID
 
-            // 🚨 ÉTAPE CLÉ MODIFIÉE: Initialisation de l'enregistrement CheckVerification
-            checkVerificationService.getOrCreateVerification(savedClient.getClientId());
+            System.out.println("✅ [SignUpController] Client créé avec ID: " + clientId);
 
-            // 2. Nettoyage avant la réponse
+            // 2. 🆕 CRÉATION AUTOMATIQUE DU WALLET AVEC SOLDE 0
+            try {
+                walletService.createWalletIfNotExists(clientId);
+                System.out.println("💰 [SignUpController] Wallet créé avec succès pour le client ID: " + clientId);
+            } catch (Exception walletException) {
+                System.err.println("⚠️ [SignUpController] Erreur lors de la création du wallet: " + walletException.getMessage());
+                // On ne bloque pas l'inscription si le wallet échoue
+                // Mais on log l'erreur pour debugging
+            }
+
+            // 3. Initialisation de l'enregistrement CheckVerification
+            checkVerificationService.getOrCreateVerification(clientId);
+            System.out.println("✅ [SignUpController] CheckVerification initialisé pour le client ID: " + clientId);
+
+            // 4. Nettoyage avant la réponse
             savedClient.setPassword(null);
             savedClient.setProfileImage(null);
 

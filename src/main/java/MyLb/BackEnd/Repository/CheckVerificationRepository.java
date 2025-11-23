@@ -1,6 +1,6 @@
 package MyLb.BackEnd.Repository;
 
-import MyLb.BackEnd.Model.CheckVerification;
+import MyLb.BackEnd.Model.Entities.CheckVerification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 

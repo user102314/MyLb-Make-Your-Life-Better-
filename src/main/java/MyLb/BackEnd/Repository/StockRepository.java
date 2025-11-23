@@ -1,16 +1,16 @@
 package MyLb.BackEnd.Repository;
 
-import MyLb.BackEnd.Model.Stock;
+import MyLb.BackEnd.Model.Entities.Stock;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query; // <--- MAKE SURE THIS IS IMPORTED
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 @Repository
 public interface StockRepository extends JpaRepository<Stock, Long> {
+    // Trouver tous les stocks d'une company
+    List<Stock> findByIdComponey(Long idComponey);
 
-    // NOUVELLE MÉTHODE: Utilise JOIN FETCH pour charger l'OwnerPO immédiatement
-    @Query("SELECT s FROM Stock s JOIN FETCH s.ownerPO")
-    List<Stock> findAllWithOwner();
+    // Trouver tous les stocks d'un propriétaire
+    List<Stock> findByOwnerPO_ClientId(Long clientId);
 }

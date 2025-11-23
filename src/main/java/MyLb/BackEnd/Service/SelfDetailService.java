@@ -1,6 +1,6 @@
 package MyLb.BackEnd.Service;
 
-import MyLb.BackEnd.Model.SelfDetail;
+import MyLb.BackEnd.Model.Entities.SelfDetail;
 
 import java.util.Optional;
 
