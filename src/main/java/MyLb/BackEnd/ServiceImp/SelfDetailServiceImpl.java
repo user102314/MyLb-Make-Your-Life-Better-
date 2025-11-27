@@ -40,7 +40,11 @@ public class SelfDetailServiceImpl implements SelfDetailService {
     public Optional<SelfDetail> getDetailsByCinNumber(String cinNumber) {
         return selfDetailRepository.findByCinNumber(cinNumber);
     }
-
+    @Override
+    public void deleteDetailsByClientId(Long clientId) {
+        // Cette méthode nécessite une requête personnalisée dans le repository
+        selfDetailRepository.deleteByClientId(clientId);
+    }
     @Override
     public void deleteDetails(Long selfDetailId) {
         selfDetailRepository.deleteById(selfDetailId);

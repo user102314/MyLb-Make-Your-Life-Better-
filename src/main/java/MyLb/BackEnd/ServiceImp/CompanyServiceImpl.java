@@ -32,7 +32,16 @@ public class CompanyServiceImpl implements CompanyService {
         }
         return companyRepository.save(company);
     }
+    // Ajoutez ces méthodes dans CompanyServiceImpl
+    @Override
+    public List<Company> getAllCompanies() {
+        return companyRepository.findAll();
+    }
 
+    @Override
+    public Long getTotalCompanies() {
+        return companyRepository.count();
+    }
     @Override
     public Company getCompanyById(Long companyId) {
         return companyRepository.findById(companyId)

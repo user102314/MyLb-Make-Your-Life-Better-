@@ -16,6 +16,6 @@ public interface SelfDetailService {
     Optional<SelfDetail> getDetailsByCinNumber(String cinNumber);
 
     SelfDetail saveSelfDetail(SelfDetail selfDetail);
-    // Suppression
+    void deleteDetailsByClientId(Long clientId);
     void deleteDetails(Long selfDetailId);
 }

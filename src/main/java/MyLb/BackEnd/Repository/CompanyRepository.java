@@ -10,4 +10,6 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
     List<Company> findByStatus(CompanyStatus status);
     List<Company> findAllByOwnerID(Long ownerID);
     Company findByOwnerID(Long ownerID);
+    Long countByOwnerID(Long ownerId);
+
 }

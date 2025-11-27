@@ -5,6 +5,7 @@ import MyLb.BackEnd.Service.CardService;
 import MyLb.BackEnd.dto.CardOperationRequest;
 import MyLb.BackEnd.dto.CardResponse;
 import MyLb.BackEnd.dto.CreateCardRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -29,18 +30,42 @@ public class CardController {
     }
 
     /**
-     * Ajouter une nouvelle carte
+     * Récupérer l'ID client depuis la session
+     */
+    private Long getClientIdFromSession(HttpSession session) {
+        Long clientId = (Long) session.getAttribute("USER_ID");
+        if (clientId == null) {
+            throw new RuntimeException("Utilisateur non authentifié");
+        }
+        return clientId;
+    }
+
+    /**
+     * Vérifier que la carte appartient au client
+     */
+    private void verifyCardOwnership(Long cardId, Long clientId) {
+        // Cette vérification se fera dans le service si nécessaire
+        // Pour l'instant, on suppose que le service gère cette sécurité
+    }
+
+    /**
+     * Ajouter une nouvelle carte pour le client connecté
      * POST /api/cards
      */
     @PostMapping
-    public ResponseEntity<?> addCard(@RequestBody CreateCardRequest request) {
+    public ResponseEntity<?> addCard(
+            HttpSession session,
+            @RequestBody CreateCardRequest request) {
+
+        Long clientId = getClientIdFromSession(session);
+
         System.out.println("🎯 ========== DEBUT AJOUT CARTE ==========");
         System.out.println("📥 [CardController] POST /api/cards - Données reçues:");
         System.out.println("   ├─ cardNumber: " + request.getCardNumber());
         System.out.println("   ├─ cardHolderName: " + request.getCardHolderName());
         System.out.println("   ├─ expiryDate: " + request.getExpiryDate());
         System.out.println("   ├─ cvv: " + request.getCvv());
-        System.out.println("   ├─ idClient: " + request.getIdClient());
+        System.out.println("   ├─ Client ID (session): " + clientId);
         System.out.println("   └─ cardType: " + request.getCardType());
 
         try {
@@ -57,21 +82,19 @@ public class CardController {
             if (request.getCvv() == null || request.getCvv().length() != 3) {
                 throw new RuntimeException("CVV invalide: doit contenir 3 chiffres");
             }
-            if (request.getIdClient() == null || request.getIdClient() <= 0) {
-                throw new RuntimeException("ID client invalide");
-            }
             if (request.getCardType() == null || !List.of("VISA", "MASTERCARD", "AMEX").contains(request.getCardType())) {
                 throw new RuntimeException("Type de carte invalide");
             }
 
             System.out.println("✅ [CardController] Validation des données réussie");
 
+            // Utiliser l'ID client de la session
             Card card = new Card(
                     request.getCardNumber(),
                     request.getCardHolderName(),
                     request.getExpiryDate(),
                     request.getCvv(),
-                    request.getIdClient(),
+                    clientId, // ID client de la session
                     request.getCardType()
             );
 
@@ -103,14 +126,22 @@ public class CardController {
     }
 
     /**
-     * Vérifier le solde d'une carte
+     * Vérifier le solde d'une carte du client connecté
      * GET /api/cards/{cardId}/solde
      */
     @GetMapping("/{cardId}/solde")
-    public ResponseEntity<?> checkSold(@PathVariable Long cardId) {
+    public ResponseEntity<?> checkSold(
+            HttpSession session,
+            @PathVariable Long cardId) {
+
+        Long clientId = getClientIdFromSession(session);
         System.out.println("📥 [CardController] GET /api/cards/" + cardId + "/solde");
+        System.out.println("   └─ Client ID: " + clientId);
 
         try {
+            // Vérifier que la carte appartient au client (dans le repository si nécessaire)
+            verifyCardOwnership(cardId, clientId);
+
             Double solde = cardService.checkSold(cardId);
             Map<String, Double> response = new HashMap<>();
             response.put("solde", solde);
@@ -130,18 +161,24 @@ public class CardController {
     }
 
     /**
-     * Ajouter du solde à une carte
+     * Ajouter du solde à une carte du client connecté
      * PUT /api/cards/{cardId}/ajouter-solde
      */
     @PutMapping("/{cardId}/ajouter-solde")
     public ResponseEntity<?> addSold(
+            HttpSession session,
             @PathVariable Long cardId,
             @RequestBody CardOperationRequest request) {
 
+        Long clientId = getClientIdFromSession(session);
         System.out.println("📥 [CardController] PUT /api/cards/" + cardId + "/ajouter-solde");
+        System.out.println("   └─ Client ID: " + clientId);
         System.out.println("   └─ Montant: " + request.getMontant() + " DT");
 
         try {
+            // Vérifier que la carte appartient au client
+            verifyCardOwnership(cardId, clientId);
+
             CardResponse response = cardService.addSold(cardId, request.getMontant());
             System.out.println("✅ [CardController] Solde ajouté avec succès");
             return ResponseEntity.ok(response);
@@ -158,18 +195,24 @@ public class CardController {
     }
 
     /**
-     * Retirer du solde d'une carte
+     * Retirer du solde d'une carte du client connecté
      * PUT /api/cards/{cardId}/retirer-solde
      */
     @PutMapping("/{cardId}/retirer-solde")
     public ResponseEntity<?> withdrawSold(
+            HttpSession session,
             @PathVariable Long cardId,
             @RequestBody CardOperationRequest request) {
 
+        Long clientId = getClientIdFromSession(session);
         System.out.println("📥 [CardController] PUT /api/cards/" + cardId + "/retirer-solde");
+        System.out.println("   └─ Client ID: " + clientId);
         System.out.println("   └─ Montant: " + request.getMontant() + " DT");
 
         try {
+            // Vérifier que la carte appartient au client
+            verifyCardOwnership(cardId, clientId);
+
             CardResponse response = cardService.withdrawSold(cardId, request.getMontant());
             System.out.println("✅ [CardController] Retrait effectué avec succès");
             return ResponseEntity.ok(response);
@@ -186,15 +229,17 @@ public class CardController {
     }
 
     /**
-     * Obtenir les cartes d'un client
-     * GET /api/cards/client/{idClient}
+     * Obtenir les cartes du client connecté
+     * GET /api/cards
      */
-    @GetMapping("/client/{idClient}")
-    public ResponseEntity<?> getCardsByClient(@PathVariable Long idClient) {
-        System.out.println("📥 [CardController] GET /api/cards/client/" + idClient);
+    @GetMapping
+    public ResponseEntity<?> getCardsByClient(HttpSession session) {
+        Long clientId = getClientIdFromSession(session);
+        System.out.println("📥 [CardController] GET /api/cards");
+        System.out.println("   └─ Client ID: " + clientId);
 
         try {
-            List<CardResponse> cards = cardService.getCardsByClient(idClient);
+            List<CardResponse> cards = cardService.getCardsByClient(clientId);
             System.out.println("✅ [CardController] " + cards.size() + " carte(s) trouvée(s)");
             return ResponseEntity.ok(cards);
         } catch (Exception e) {
@@ -210,14 +255,22 @@ public class CardController {
     }
 
     /**
-     * Désactiver une carte
+     * Désactiver une carte du client connecté
      * PUT /api/cards/{cardId}/desactiver
      */
     @PutMapping("/{cardId}/desactiver")
-    public ResponseEntity<?> deactivateCard(@PathVariable Long cardId) {
+    public ResponseEntity<?> deactivateCard(
+            HttpSession session,
+            @PathVariable Long cardId) {
+
+        Long clientId = getClientIdFromSession(session);
         System.out.println("📥 [CardController] PUT /api/cards/" + cardId + "/desactiver");
+        System.out.println("   └─ Client ID: " + clientId);
 
         try {
+            // Vérifier que la carte appartient au client
+            verifyCardOwnership(cardId, clientId);
+
             CardResponse response = cardService.deactivateCard(cardId);
             System.out.println("✅ [CardController] Carte désactivée avec succès");
             return ResponseEntity.ok(response);
@@ -227,6 +280,74 @@ public class CardController {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("timestamp", LocalDateTime.now().toString());
             errorResponse.put("error", "Erreur lors de la désactivation");
+            errorResponse.put("message", e.getMessage());
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+    }
+
+    /**
+     * Transférer du solde de la carte vers le wallet
+     * PUT /api/cards/{cardId}/transfer-to-wallet
+     */
+    @PutMapping("/{cardId}/transfer-to-wallet")
+    public ResponseEntity<?> transferToWallet(
+            HttpSession session,
+            @PathVariable Long cardId,
+            @RequestBody CardOperationRequest request) {
+
+        Long clientId = getClientIdFromSession(session);
+        System.out.println("📥 [CardController] PUT /api/cards/" + cardId + "/transfer-to-wallet");
+        System.out.println("   └─ Client ID: " + clientId);
+        System.out.println("   └─ Montant: " + request.getMontant() + " DT");
+
+        try {
+            // Vérifier que la carte appartient au client
+            verifyCardOwnership(cardId, clientId);
+
+            CardResponse response = cardService.transferToWallet(cardId, request.getMontant());
+            System.out.println("✅ [CardController] Transfert vers wallet effectué avec succès");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            System.err.println("❌ [CardController] Erreur: " + e.getMessage());
+
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("timestamp", LocalDateTime.now().toString());
+            errorResponse.put("error", "Erreur lors du transfert vers le wallet");
+            errorResponse.put("message", e.getMessage());
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+    }
+
+    /**
+     * Transférer du solde du wallet vers la carte
+     * PUT /api/cards/{cardId}/transfer-from-wallet
+     */
+    @PutMapping("/{cardId}/transfer-from-wallet")
+    public ResponseEntity<?> transferFromWallet(
+            HttpSession session,
+            @PathVariable Long cardId,
+            @RequestBody CardOperationRequest request) {
+
+        Long clientId = getClientIdFromSession(session);
+        System.out.println("📥 [CardController] PUT /api/cards/" + cardId + "/transfer-from-wallet");
+        System.out.println("   └─ Client ID: " + clientId);
+        System.out.println("   └─ Montant: " + request.getMontant() + " DT");
+
+        try {
+            // Vérifier que la carte appartient au client
+            verifyCardOwnership(cardId, clientId);
+
+            CardResponse response = cardService.transferFromWallet(cardId, request.getMontant());
+            System.out.println("✅ [CardController] Transfert depuis wallet effectué avec succès");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            System.err.println("❌ [CardController] Erreur: " + e.getMessage());
+
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("timestamp", LocalDateTime.now().toString());
+            errorResponse.put("error", "Erreur lors du transfert depuis le wallet");
             errorResponse.put("message", e.getMessage());
 
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);

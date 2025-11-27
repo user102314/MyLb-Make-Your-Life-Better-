@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -15,38 +16,51 @@ public class UserIdentityService {
     @Autowired
     private UserIdentityRepository userIdentityRepository;
 
-    /**
-     * Enregistre les documents KYC (données BLOB) directement en base de données.
-     * @param iduser L'ID de l'utilisateur connecté.
-     */
     public UserIdentity registerKycDocuments(
             Long iduser,
             MultipartFile cinRecto,
             MultipartFile cinVerso,
-            MultipartFile selfie) throws IOException { // 🚨 Lève une IOException
+            MultipartFile selfie) throws IOException {
 
-        // 1. Vérifie si l'utilisateur a déjà soumis des documents
         Optional<UserIdentity> existingIdentityOpt = userIdentityRepository.findByIduser(iduser);
         UserIdentity identity;
 
         if (existingIdentityOpt.isPresent()) {
-            // Mise à jour de l'enregistrement existant
             identity = existingIdentityOpt.get();
         } else {
-            // Création d'un nouvel enregistrement
             identity = new UserIdentity();
             identity.setIduser(iduser);
         }
 
-        // 2. 🚨 MODIFICATION CRITIQUE: Conversion du fichier MultipartFile en tableau d'octets (byte[])
         identity.setPhotocinRecto(cinRecto.getBytes());
         identity.setPhotocinVerso(cinVerso.getBytes());
         identity.setPhotocompletSelfie(selfie.getBytes());
+        identity.setEtat(UserIdentity.ValidationStatus.PENDING);
 
-        // 3. Met à jour l'état
-        identity.setEtat(UserIdentity.ValidationStatus.PENDING); // Remis à 'PENDING' après soumission
-
-        // 4. Sauvegarde en base de données (inclut les données BLOB)
         return userIdentityRepository.save(identity);
+    }
+
+    // NOUVELLES MÉTHODES AJOUTÉES
+    public Optional<UserIdentity> getUserIdentityByUserId(Long userId) {
+        return userIdentityRepository.findByIduser(userId);
+    }
+
+    public List<UserIdentity> getAllUserIdentities() {
+        return userIdentityRepository.findAll();
+    }
+
+    public UserIdentity updateValidationStatus(Long userId, UserIdentity.ValidationStatus status) {
+        UserIdentity userIdentity = userIdentityRepository.findByIduser(userId)
+                .orElseThrow(() -> new RuntimeException("UserIdentity not found for user id: " + userId));
+        userIdentity.setEtat(status);
+        return userIdentityRepository.save(userIdentity);
+    }
+
+    public boolean existsByUserId(Long userId) {
+        return userIdentityRepository.findByIduser(userId).isPresent();
+    }
+
+    public void deleteUserIdentity(Long id) {
+        userIdentityRepository.deleteById(id);
     }
 }

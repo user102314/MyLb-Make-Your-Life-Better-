@@ -28,6 +28,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     @Query("SELECT COALESCE(SUM(t.montant), 0) FROM Transaction t WHERE t.idClient = :idClient AND t.typeOperation = 'WITHDRAW' AND t.statut = 'COMPLETED'")
     Double getTotalWithdrawalsByClient(@Param("idClient") Long idClient);
+    List<Transaction> findAllByOrderByDateCreationDesc();
 
     @Query("SELECT t FROM Transaction t WHERE t.idClient = :idClient AND t.dateCreation >= :startDate ORDER BY t.dateCreation DESC")
     List<Transaction> findRecentTransactions(@Param("idClient") Long idClient, @Param("startDate") LocalDateTime startDate);

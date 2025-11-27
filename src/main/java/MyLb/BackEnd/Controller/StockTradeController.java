@@ -5,6 +5,7 @@ import MyLb.BackEnd.Service.StockTradeService;
 import MyLb.BackEnd.dto.BuyStockRequest;
 import MyLb.BackEnd.dto.SellStockRequest;
 import MyLb.BackEnd.dto.StockTradeResponse;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,17 +25,36 @@ public class StockTradeController {
     }
 
     /**
-     * Acheter des stocks
+     * Récupérer l'ID client depuis la session
+     */
+    private Long getClientIdFromSession(HttpSession session) {
+        Long clientId = (Long) session.getAttribute("USER_ID");
+        if (clientId == null) {
+            throw new RuntimeException("Utilisateur non authentifié");
+        }
+        return clientId;
+    }
+
+    /**
+     * Acheter des stocks pour le client connecté
      * POST /api/stock-trade/buy
      */
     @PostMapping("/buy")
-    public ResponseEntity<StockTradeResponse> buyStock(@RequestBody BuyStockRequest request) {
+    public ResponseEntity<StockTradeResponse> buyStock(
+            HttpSession session,
+            @RequestBody BuyStockRequest request) {
+
+        Long clientId = getClientIdFromSession(session);
+
         System.out.println("🛒 [StockTradeController] POST /api/stock-trade/buy");
-        System.out.println("   └─ Client: " + request.getIdClient() +
+        System.out.println("   └─ Client (session): " + clientId +
                 ", Stock: " + request.getIdStock() +
                 ", Quantité: " + request.getQuantite());
 
         try {
+            // Utiliser l'ID client de la session
+            request.setIdClient(clientId);
+
             StockTradeResponse response = stockTradeService.buyStock(request);
 
             if (response.isSuccess()) {
@@ -53,17 +73,25 @@ public class StockTradeController {
     }
 
     /**
-     * Vendre des stocks
+     * Vendre des stocks pour le client connecté
      * POST /api/stock-trade/sell
      */
     @PostMapping("/sell")
-    public ResponseEntity<StockTradeResponse> sellStock(@RequestBody SellStockRequest request) {
+    public ResponseEntity<StockTradeResponse> sellStock(
+            HttpSession session,
+            @RequestBody SellStockRequest request) {
+
+        Long clientId = getClientIdFromSession(session);
+
         System.out.println("💰 [StockTradeController] POST /api/stock-trade/sell");
-        System.out.println("   └─ Client: " + request.getIdClient() +
+        System.out.println("   └─ Client (session): " + clientId +
                 ", StockWallet: " + request.getIdStockWallet() +
                 ", Quantité: " + request.getQuantite());
 
         try {
+            // Utiliser l'ID client de la session
+            request.setIdClient(clientId);
+
             StockTradeResponse response = stockTradeService.sellStock(request);
 
             if (response.isSuccess()) {

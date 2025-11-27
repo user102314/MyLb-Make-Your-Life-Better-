@@ -2,9 +2,13 @@ package MyLb.BackEnd.Repository;
 
 import MyLb.BackEnd.Model.Entities.CheckVerification;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import java.util.Optional;
 
 public interface CheckVerificationRepository extends JpaRepository<CheckVerification, Long> {
-    // Méthode pour trouver l'enregistrement de vérification par l'ID de l'utilisateur
-    Optional<CheckVerification> findByIduser(Long iduser);
+    // NOUVELLE MÉTHODE AJOUTÉE
+    @Query("SELECT cv FROM CheckVerification cv WHERE cv.iduser = :userId")
+    Optional<CheckVerification> findByUserId(@Param("userId") Long userId);    Optional<CheckVerification> findByIduser(Long iduser);
 }

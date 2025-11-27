@@ -12,7 +12,9 @@ public interface CompanyService {
     Company getCompanyById(Long companyId);
 
     Company getCompanyByOwnerId(Long ownerId);
+    List<Company> getAllCompanies();
 
+    Long getTotalCompanies();
     Company updateCompanyStatus(Long companyId, String newStatus);
     List<CompanySummaryResponse> getCompanySummariesByOwnerId(Long ownerId);
     public boolean isOwner(Long userId, Long companyId);

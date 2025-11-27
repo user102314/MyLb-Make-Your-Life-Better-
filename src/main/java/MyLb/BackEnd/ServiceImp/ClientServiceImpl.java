@@ -1,5 +1,6 @@
 package MyLb.BackEnd.ServiceImp;
 
+import MyLb.BackEnd.Model.Entities.SelfDetail;
 import MyLb.BackEnd.Model.Estnum.ActionType;
 import MyLb.BackEnd.Model.Entities.Client;
 import MyLb.BackEnd.Repository.ClientRepository;
@@ -11,12 +12,14 @@ import MyLb.BackEnd.Service.GoogleAuthService;
 import MyLb.BackEnd.Service.WalletService; // 🆕 IMPORT AJOUTÉ
 import MyLb.BackEnd.dto.ClientUpdateRequest;
 import MyLb.BackEnd.dto.PasswordChangeRequest;
+import MyLb.BackEnd.dto.UserWithDetailsDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 
 @Service
 public class ClientServiceImpl implements ClientService {
@@ -221,5 +224,49 @@ public class ClientServiceImpl implements ClientService {
         clientActionService.logAction(userId, ActionType.PASSWORD_CHANGE, "Le mot de passe a été modifié avec succès.");
 
         return true;
+    }
+    @Override
+    public List<UserWithDetailsDTO> getAllUsersWithDetails() {
+        List<Client> clients = clientRepository.findAllWithSelfDetail();
+
+        return clients.stream()
+                .map(this::convertToUserWithDetailsDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Client updateUserRole(Long userId, String role) {
+        Client client = clientRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Client not found with id: " + userId));
+
+        client.setRole(role);
+        return clientRepository.save(client);
+    }
+
+    @Override
+    public Client updateUserVerification(Long userId, Boolean isVerified) {
+        Client client = clientRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Client not found with id: " + userId));
+
+        client.setIsVerified(isVerified);
+        return clientRepository.save(client);
+    }
+
+    private UserWithDetailsDTO convertToUserWithDetailsDTO(Client client) {
+        SelfDetail selfDetail = client.getSelfDetail();
+
+        return new UserWithDetailsDTO(
+                client.getClientId(),
+                client.getFirstName(),
+                client.getLastName(),
+                client.getEmail(),
+                client.getBirthDate(),
+                client.getRole(),
+                client.getIsVerified(),
+                selfDetail != null ? selfDetail.getUsagePurpose() : null,
+                selfDetail != null ? selfDetail.getCinNumber() : null,
+                selfDetail != null ? selfDetail.getPhoneNumber() : null,
+                selfDetail != null ? selfDetail.getAge() : null
+        );
     }
 }

@@ -1,9 +1,14 @@
 package MyLb.BackEnd.Service;
 
 import MyLb.BackEnd.Model.Entities.CheckVerification;
+import MyLb.BackEnd.Model.Entities.UserIdentity;
 import MyLb.BackEnd.Repository.CheckVerificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -12,9 +17,6 @@ public class CheckVerificationService {
     @Autowired
     private CheckVerificationRepository checkVerificationRepository;
 
-    /**
-     * Crée ou récupère l'enregistrement de vérification pour un utilisateur donné.
-     */
     public CheckVerification getOrCreateVerification(Long iduser) {
         return checkVerificationRepository.findByIduser(iduser)
                 .orElseGet(() -> {
@@ -23,28 +25,15 @@ public class CheckVerificationService {
                 });
     }
 
-    /**
-     * Récupère l'enregistrement de vérification par ID utilisateur.
-     */
     public Optional<CheckVerification> getVerificationByIduser(Long iduser) {
         return checkVerificationRepository.findByIduser(iduser);
     }
 
-
-    /**
-     * Met à jour le statut d'une étape de vérification.
-     * @param iduser L'ID de l'utilisateur.
-     * @param etatIndex L'étape à mettre à jour (1, 2, 3 ou 4).
-     * @param status La nouvelle valeur (true/false).
-     * @return L'objet CheckVerification mis à jour, ou null si non trouvé.
-     */
     public CheckVerification updateVerificationStatus(Long iduser, int etatIndex, boolean status) {
         Optional<CheckVerification> verificationOpt = checkVerificationRepository.findByIduser(iduser);
 
         if (verificationOpt.isPresent()) {
             CheckVerification verification = verificationOpt.get();
-
-            // Logique de mise à jour basée sur l'index
             switch (etatIndex) {
                 case 1:
                     verification.setEtat1(status);
@@ -61,9 +50,23 @@ public class CheckVerificationService {
                 default:
                     throw new IllegalArgumentException("Index d'étape invalide: " + etatIndex);
             }
-
             return checkVerificationRepository.save(verification);
         }
         return null;
+    }
+
+    // NOUVELLE MÉTHODE AJOUTÉE
+    public boolean isUserFullyVerified(Long userId) {
+        Optional<CheckVerification> verification = checkVerificationRepository.findByIduser(userId);
+        return verification.map(v -> v.isEtat1() && v.isEtat2() && v.isEtat3() && v.isEtat4())
+                .orElse(false);
+    }
+
+    // NOUVELLE MÉTHODE AJOUTÉE
+    public List<CheckVerification> getAllCheckVerifications() {
+        return checkVerificationRepository.findAll();
+    }
+
+    public void deleteCheckVerification(Long idverification) {
     }
 }

@@ -36,7 +36,10 @@ public class UserIdentity {
     private LocalDateTime uploadDate = LocalDateTime.now();
 
     public enum ValidationStatus {
-        PENDING, VALIDATED, REJECTED
+        PENDING,
+        VALIDATED,
+        REJECTED
+        // Ajoutez d'autres valeurs si nécessaire
     }
 
     // --- Getters et Setters (Mis à jour pour byte[]) ---

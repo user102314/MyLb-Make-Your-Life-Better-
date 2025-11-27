@@ -19,6 +19,87 @@ public class TransactionService {
     }
 
     /**
+     * Obtenir toutes les transactions de tous les clients (Admin)
+     */
+    public List<Transaction> getAllTransactions() {
+        System.out.println("📊 [TransactionService] Récupération de toutes les transactions");
+        List<Transaction> allTransactions = transactionRepository.findAllByOrderByDateCreationDesc();
+        System.out.println("✅ [TransactionService] " + allTransactions.size() + " transaction(s) trouvée(s) au total");
+        return allTransactions;
+    }
+
+    /**
+     * Obtenir toutes les transactions avec pagination (Admin)
+     */
+    public List<Transaction> getAllTransactions(int page, int size) {
+        System.out.println("📊 [TransactionService] Récupération des transactions - Page: " + page + ", Taille: " + size);
+        // Implémentation de la pagination si nécessaire
+        return transactionRepository.findAllByOrderByDateCreationDesc();
+    }
+
+    /**
+     * Obtenir les transactions de stocks de tous les clients
+     */
+    public List<Transaction> getAllStockTransactions() {
+        System.out.println("📊 [TransactionService] Récupération de toutes les transactions de stocks");
+        List<Transaction> allTransactions = getAllTransactions();
+
+        // Filtrer les transactions de stocks
+        List<Transaction> stockTransactions = allTransactions.stream()
+                .filter(transaction -> transaction.getDescription() != null &&
+                        (transaction.getDescription().startsWith("Achat de") ||
+                                transaction.getDescription().startsWith("Vente de")))
+                .collect(java.util.stream.Collectors.toList());
+
+        System.out.println("✅ [TransactionService] " + stockTransactions.size() + " transaction(s) de stock trouvée(s)");
+        return stockTransactions;
+    }
+
+    /**
+     * Obtenir les statistiques globales de toutes les transactions
+     */
+    public java.util.Map<String, Object> getGlobalStats() {
+        System.out.println("📊 [TransactionService] Calcul des statistiques globales");
+        List<Transaction> allTransactions = getAllTransactions();
+
+        double totalDeposits = allTransactions.stream()
+                .filter(t -> "DEPOSIT".equals(t.getTypeOperation()) || "CARD_TO_WALLET".equals(t.getTypeOperation()))
+                .mapToDouble(Transaction::getMontant)
+                .sum();
+
+        double totalWithdrawals = allTransactions.stream()
+                .filter(t -> "WITHDRAW".equals(t.getTypeOperation()) || "WALLET_TO_CARD".equals(t.getTypeOperation()))
+                .mapToDouble(Transaction::getMontant)
+                .sum();
+
+        double totalStockTransactions = allTransactions.stream()
+                .filter(t -> t.getDescription() != null &&
+                        (t.getDescription().startsWith("Achat de") || t.getDescription().startsWith("Vente de")))
+                .mapToDouble(Transaction::getMontant)
+                .sum();
+
+        long totalClients = allTransactions.stream()
+                .map(Transaction::getIdClient)
+                .distinct()
+                .count();
+
+        java.util.Map<String, Object> stats = new java.util.HashMap<>();
+        stats.put("totalTransactions", allTransactions.size());
+        stats.put("totalDeposits", totalDeposits);
+        stats.put("totalWithdrawals", totalWithdrawals);
+        stats.put("totalStockTransactions", totalStockTransactions);
+        stats.put("netFlow", totalDeposits - totalWithdrawals);
+        stats.put("totalClients", totalClients);
+        stats.put("averageTransactionAmount", allTransactions.isEmpty() ? 0 :
+                allTransactions.stream().mapToDouble(Transaction::getMontant).average().orElse(0));
+
+        System.out.println("✅ [TransactionService] Statistiques globales calculées");
+        return stats;
+    }
+
+    // ... LE RESTE DE VOTRE CODE EXISTANT ...
+
+    /**
      * Enregistrer une transaction
      */
     public Transaction saveTransaction(Transaction transaction) {

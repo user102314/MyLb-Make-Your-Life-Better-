@@ -18,10 +18,9 @@ public class BuyStockRequest {
     // Getters et Setters
     public Long getIdClient() { return idClient; }
     public void setIdClient(Long idClient) { this.idClient = idClient; }
-
     public Long getIdStock() { return idStock; }
     public void setIdStock(Long idStock) { this.idStock = idStock; }
-
     public Integer getQuantite() { return quantite; }
     public void setQuantite(Integer quantite) { this.quantite = quantite; }
+
 }

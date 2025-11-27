@@ -1,4 +1,3 @@
-// MyLb.BackEnd.Controller.StockWalletController.java
 package MyLb.BackEnd.Controller;
 
 import MyLb.BackEnd.Service.StockWalletService;
@@ -6,6 +5,7 @@ import MyLb.BackEnd.dto.StockWalletResponse;
 import MyLb.BackEnd.dto.CreateStockWalletRequest;
 import MyLb.BackEnd.dto.UpdateStockWalletRequest;
 import MyLb.BackEnd.dto.StockWalletStats;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,13 +27,31 @@ public class StockWalletController {
     }
 
     /**
-     * Ajouter un stock au wallet
+     * Récupérer l'ID client depuis la session
+     */
+    private Long getClientIdFromSession(HttpSession session) {
+        Long clientId = (Long) session.getAttribute("USER_ID");
+        if (clientId == null) {
+            throw new RuntimeException("Utilisateur non authentifié");
+        }
+        return clientId;
+    }
+
+    /**
+     * Ajouter un stock au wallet du client connecté
      * POST /api/stock-wallet
      */
     @PostMapping
-    public ResponseEntity<StockWalletResponse> addStockToWallet(@RequestBody CreateStockWalletRequest request) {
+    public ResponseEntity<StockWalletResponse> addStockToWallet(
+            HttpSession session,
+            @RequestBody CreateStockWalletRequest request) {
+
+        Long clientId = getClientIdFromSession(session);
+        // S'assurer que l'ID client dans la requête correspond à la session
+        request.setIdClient(clientId);
+
         System.out.println("📥 [StockWalletController] POST /api/stock-wallet");
-        System.out.println("   └─ Client: " + request.getIdClient() + ", Stock: " + request.getNomStock());
+        System.out.println("   └─ Client: " + clientId + ", Stock: " + request.getNomStock());
 
         try {
             StockWalletResponse response = stockWalletService.addStockToWallet(request);
@@ -46,15 +64,17 @@ public class StockWalletController {
     }
 
     /**
-     * Récupérer tous les stocks d'un client
-     * GET /api/stock-wallet/client/{idClient}
+     * Récupérer tous les stocks du client connecté
+     * GET /api/stock-wallet
      */
-    @GetMapping("/client/{idClient}")
-    public ResponseEntity<List<StockWalletResponse>> getClientStocks(@PathVariable Long idClient) {
-        System.out.println("📥 [StockWalletController] GET /api/stock-wallet/client/" + idClient);
+    @GetMapping
+    public ResponseEntity<List<StockWalletResponse>> getClientStocks(HttpSession session) {
+        Long clientId = getClientIdFromSession(session);
+        System.out.println("📥 [StockWalletController] GET /api/stock-wallet");
+        System.out.println("   └─ Client ID: " + clientId);
 
         try {
-            List<StockWalletResponse> stocks = stockWalletService.getClientStocks(idClient);
+            List<StockWalletResponse> stocks = stockWalletService.getClientStocks(clientId);
             System.out.println("✅ [StockWalletController] " + stocks.size() + " stock(s) trouvé(s)");
             return ResponseEntity.ok(stocks);
         } catch (Exception e) {
@@ -64,17 +84,20 @@ public class StockWalletController {
     }
 
     /**
-     * Récupérer un stock spécifique
-     * GET /api/stock-wallet/{id}/client/{idClient}
+     * Récupérer un stock spécifique du client connecté
+     * GET /api/stock-wallet/{id}
      */
-    @GetMapping("/{id}/client/{idClient}")
+    @GetMapping("/{id}")
     public ResponseEntity<StockWalletResponse> getStockWallet(
-            @PathVariable Long id,
-            @PathVariable Long idClient) {
-        System.out.println("📥 [StockWalletController] GET /api/stock-wallet/" + id + "/client/" + idClient);
+            HttpSession session,
+            @PathVariable Long id) {
+
+        Long clientId = getClientIdFromSession(session);
+        System.out.println("📥 [StockWalletController] GET /api/stock-wallet/" + id);
+        System.out.println("   └─ Client ID: " + clientId);
 
         try {
-            StockWalletResponse stock = stockWalletService.getStockWalletById(id, idClient);
+            StockWalletResponse stock = stockWalletService.getStockWalletById(id, clientId);
             System.out.println("✅ [StockWalletController] Stock trouvé: " + stock.getNomStock());
             return ResponseEntity.ok(stock);
         } catch (Exception e) {
@@ -84,18 +107,21 @@ public class StockWalletController {
     }
 
     /**
-     * Mettre à jour un stock
-     * PUT /api/stock-wallet/{id}/client/{idClient}
+     * Mettre à jour un stock du client connecté
+     * PUT /api/stock-wallet/{id}
      */
-    @PutMapping("/{id}/client/{idClient}")
+    @PutMapping("/{id}")
     public ResponseEntity<StockWalletResponse> updateStockWallet(
+            HttpSession session,
             @PathVariable Long id,
-            @PathVariable Long idClient,
             @RequestBody UpdateStockWalletRequest request) {
-        System.out.println("📥 [StockWalletController] PUT /api/stock-wallet/" + id + "/client/" + idClient);
+
+        Long clientId = getClientIdFromSession(session);
+        System.out.println("📥 [StockWalletController] PUT /api/stock-wallet/" + id);
+        System.out.println("   └─ Client ID: " + clientId);
 
         try {
-            StockWalletResponse updatedStock = stockWalletService.updateStockWallet(id, idClient, request);
+            StockWalletResponse updatedStock = stockWalletService.updateStockWallet(id, clientId, request);
             System.out.println("✅ [StockWalletController] Stock mis à jour: " + updatedStock.getNomStock());
             return ResponseEntity.ok(updatedStock);
         } catch (Exception e) {
@@ -105,17 +131,20 @@ public class StockWalletController {
     }
 
     /**
-     * Supprimer un stock
-     * DELETE /api/stock-wallet/{id}/client/{idClient}
+     * Supprimer un stock du client connecté
+     * DELETE /api/stock-wallet/{id}
      */
-    @DeleteMapping("/{id}/client/{idClient}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteStockWallet(
-            @PathVariable Long id,
-            @PathVariable Long idClient) {
-        System.out.println("📥 [StockWalletController] DELETE /api/stock-wallet/" + id + "/client/" + idClient);
+            HttpSession session,
+            @PathVariable Long id) {
+
+        Long clientId = getClientIdFromSession(session);
+        System.out.println("📥 [StockWalletController] DELETE /api/stock-wallet/" + id);
+        System.out.println("   └─ Client ID: " + clientId);
 
         try {
-            stockWalletService.deleteStockFromWallet(id, idClient);
+            stockWalletService.deleteStockFromWallet(id, clientId);
             System.out.println("✅ [StockWalletController] Stock supprimé - ID: " + id);
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
@@ -125,15 +154,17 @@ public class StockWalletController {
     }
 
     /**
-     * Récupérer les statistiques du wallet
-     * GET /api/stock-wallet/client/{idClient}/stats
+     * Récupérer les statistiques du wallet du client connecté
+     * GET /api/stock-wallet/stats
      */
-    @GetMapping("/client/{idClient}/stats")
-    public ResponseEntity<StockWalletStats> getWalletStats(@PathVariable Long idClient) {
-        System.out.println("📥 [StockWalletController] GET /api/stock-wallet/client/" + idClient + "/stats");
+    @GetMapping("/stats")
+    public ResponseEntity<StockWalletStats> getWalletStats(HttpSession session) {
+        Long clientId = getClientIdFromSession(session);
+        System.out.println("📥 [StockWalletController] GET /api/stock-wallet/stats");
+        System.out.println("   └─ Client ID: " + clientId);
 
         try {
-            StockWalletStats stats = stockWalletService.getWalletStats(idClient);
+            StockWalletStats stats = stockWalletService.getWalletStats(clientId);
             System.out.println("✅ [StockWalletController] Statistiques récupérées");
             return ResponseEntity.ok(stats);
         } catch (Exception e) {

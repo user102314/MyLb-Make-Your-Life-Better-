@@ -4,6 +4,7 @@ import MyLb.BackEnd.Service.WalletService;
 import MyLb.BackEnd.dto.ModifySoldRequest;
 import MyLb.BackEnd.dto.RechargeRequest;
 import MyLb.BackEnd.dto.WalletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -26,19 +27,33 @@ public class WalletController {
     }
 
     /**
-     * Recharger le solde d'un client
-     * POST /api/wallets/{idClient}/recharger
+     * Récupérer l'ID client depuis la session
      */
-    @PostMapping("/{idClient}/recharger")
+    private Long getClientIdFromSession(HttpSession session) {
+        Long clientId = (Long) session.getAttribute("USER_ID");
+        if (clientId == null) {
+            throw new RuntimeException("Utilisateur non authentifié");
+        }
+        return clientId;
+    }
+
+    /**
+     * Recharger le solde du client connecté
+     * POST /api/wallets/recharger
+     */
+    @PostMapping("/recharger")
     public ResponseEntity<WalletResponse> rechargerSold(
-            @PathVariable Long idClient,
+            HttpSession session,
             @Valid @RequestBody RechargeRequest request) {
 
-        System.out.println("📥 [WalletController] POST /api/wallets/" + idClient + "/recharger");
+        Long clientId = getClientIdFromSession(session);
+
+        System.out.println("📥 [WalletController] POST /api/wallets/recharger");
+        System.out.println("   └─ Client ID: " + clientId);
         System.out.println("   └─ Montant: " + request.getMontant());
 
         try {
-            WalletResponse response = walletService.rechargerSold(idClient, request.getMontant());
+            WalletResponse response = walletService.rechargerSold(clientId, request.getMontant());
             System.out.println("✅ [WalletController] Rechargement réussi");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -49,15 +64,18 @@ public class WalletController {
     }
 
     /**
-     * Get solde by ID client
-     * GET /api/wallets/{idClient}/solde
+     * Get solde du client connecté
+     * GET /api/wallets/solde
      */
-    @GetMapping("/{idClient}/solde")
-    public ResponseEntity<Map<String, Double>> getSoldByIdClient(@PathVariable Long idClient) {
-        System.out.println("📥 [WalletController] GET /api/wallets/" + idClient + "/solde");
+    @GetMapping("/solde")
+    public ResponseEntity<Map<String, Double>> getSoldByIdClient(HttpSession session) {
+        Long clientId = getClientIdFromSession(session);
+
+        System.out.println("📥 [WalletController] GET /api/wallets/solde");
+        System.out.println("   └─ Client ID: " + clientId);
 
         try {
-            Double solde = walletService.getSoldByIdClient(idClient);
+            Double solde = walletService.getSoldByIdClient(clientId);
             Map<String, Double> response = new HashMap<>();
             response.put("solde", solde);
 
@@ -71,19 +89,22 @@ public class WalletController {
     }
 
     /**
-     * Modifier le solde d'un client
-     * PUT /api/wallets/{idClient}/modifier-solde
+     * Modifier le solde du client connecté
+     * PUT /api/wallets/modifier-solde
      */
-    @PutMapping("/{idClient}/modifier-solde")
+    @PutMapping("/modifier-solde")
     public ResponseEntity<WalletResponse> modifySold(
-            @PathVariable Long idClient,
+            HttpSession session,
             @Valid @RequestBody ModifySoldRequest request) {
 
-        System.out.println("📥 [WalletController] PUT /api/wallets/" + idClient + "/modifier-solde");
+        Long clientId = getClientIdFromSession(session);
+
+        System.out.println("📥 [WalletController] PUT /api/wallets/modifier-solde");
+        System.out.println("   └─ Client ID: " + clientId);
         System.out.println("   └─ Nouveau solde: " + request.getNouveauSold());
 
         try {
-            WalletResponse response = walletService.modifySold(idClient, request.getNouveauSold());
+            WalletResponse response = walletService.modifySold(clientId, request.getNouveauSold());
             System.out.println("✅ [WalletController] Solde modifié avec succès");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -94,15 +115,18 @@ public class WalletController {
     }
 
     /**
-     * Créer un wallet si il n'existe pas
-     * POST /api/wallets/{idClient}/create
+     * Créer un wallet pour le client connecté
+     * POST /api/wallets/create
      */
-    @PostMapping("/{idClient}/create")
-    public ResponseEntity<WalletResponse> createWallet(@PathVariable Long idClient) {
-        System.out.println("📥 [WalletController] POST /api/wallets/" + idClient + "/create");
+    @PostMapping("/create")
+    public ResponseEntity<WalletResponse> createWallet(HttpSession session) {
+        Long clientId = getClientIdFromSession(session);
+
+        System.out.println("📥 [WalletController] POST /api/wallets/create");
+        System.out.println("   └─ Client ID: " + clientId);
 
         try {
-            WalletResponse response = walletService.createWalletIfNotExists(idClient);
+            WalletResponse response = walletService.createWalletIfNotExists(clientId);
             System.out.println("✅ [WalletController] Wallet créé/vérifié avec succès");
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (Exception e) {
