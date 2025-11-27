@@ -32,13 +32,13 @@ public class EmailController {
     private ClientService clientService;
 
     // -------------------------------------------------------------------------
-    // 1. POINT D'API POUR ENVOYER LE CODE DE VÉRIFICATION (INCHANGÉ)
+    // 1. POINT D'API POUR ENVOYER LE CODE DE VÉRIFICATION
     // -------------------------------------------------------------------------
 
     @PostMapping("/send-verification-code")
     public ResponseEntity<Map<String, String>> sendVerificationCode(HttpSession session) {
 
-        // 1. Récupération de l'ID utilisateur de la session
+        // ... (Logique inchangée pour sendVerificationCode)
         Long clientId = (Long) session.getAttribute("USER_ID");
 
         if (clientId == null) {
@@ -47,7 +47,6 @@ public class EmailController {
             ));
         }
 
-        // 2. Récupération de l'objet Client complet via le Service
         Optional<Client> clientOpt = clientService.getClientById(clientId);
 
         if (clientOpt.isEmpty()) {
@@ -61,11 +60,7 @@ public class EmailController {
 
         try {
             String verificationCode = verificationService.generateCode();
-
-            // 3. Stocke le code en utilisant l'ID Client réel de la session
             verificationService.storeCode(clientId, verificationCode);
-
-            // 4. Envoi de l'e-mail à l'utilisateur connecté
             emailService.sendVerificationCodeEmail(userEmail, verificationCode);
 
             return ResponseEntity.ok(Map.of(
@@ -81,7 +76,7 @@ public class EmailController {
     }
 
     // -------------------------------------------------------------------------
-    // 2. POINT D'API POUR VÉRIFIER LE CODE (MODIFIÉ)
+    // 2. POINT D'API POUR VÉRIFIER LE CODE
     // -------------------------------------------------------------------------
 
     @PostMapping("/verify-code")
@@ -89,7 +84,7 @@ public class EmailController {
             @RequestBody VerificationRequest verificationRequest,
             HttpSession session) {
 
-        // 1. Récupération de l'ID utilisateur de la session
+        // ... (Logique inchangée pour verifyCode)
         Long clientId = (Long) session.getAttribute("USER_ID");
 
         if (clientId == null) {
@@ -108,14 +103,11 @@ public class EmailController {
             ));
         }
 
-        // 2. Vérification du code
         boolean isValid = verificationService.verifyCode(clientId, submittedCode);
 
         if (isValid) {
 
-            // 🚨 3. AJOUT DE LA LOGIQUE DE MISE À JOUR DU STATUT (ETAT 1 = VRAI)
             try {
-                // L'index 1 correspond à l'étape 1 (etat1_email) dans CheckVerification
                 checkVerificationService.updateVerificationStatus(clientId, 1, true);
 
                 return ResponseEntity.ok(Map.of(
@@ -138,15 +130,22 @@ public class EmailController {
     }
 
     // -------------------------------------------------------------------------
-    // 3. NOUVEL ENDPOINT POUR ENVOYER UN EMAIL À MYLBMAKEYOULIFEBETTER@GMAIL.COM
+    // 3. NOUVEL ENDPOINT GÉNÉRIQUE POUR ENVOYER UN EMAIL À UN DESTINATAIRE SPÉCIFIQUE
     // -------------------------------------------------------------------------
-
-    @PostMapping("/send-to-support")
-    public ResponseEntity<Map<String, Object>> sendEmailToSupport(
-            @RequestBody Map<String, String> emailData,
+    /**
+     * Endpoint pour envoyer un email à une adresse, avec un sujet et un contenu spécifiés
+     * Requiert une authentification (session active)
+     *
+     * @param mailData Un Map contenant "toEmail", "subject" et "content"
+     * @param session La session de l'utilisateur (pour vérification)
+     * @return Réponse HTTP
+     */
+    @PostMapping("/send-mail")
+    public ResponseEntity<Map<String, Object>> sendGenericMail(
+            @RequestBody Map<String, String> mailData,
             HttpSession session) {
 
-        // 1. Récupération de l'ID utilisateur de la session
+        // 1. Vérification de la session utilisateur (pour sécuriser l'accès)
         Long clientId = (Long) session.getAttribute("USER_ID");
 
         if (clientId == null) {
@@ -156,12 +155,63 @@ public class EmailController {
             ));
         }
 
-        // 2. Récupération des données de l'email
+        // 2. Récupération des données du corps de la requête
+        String toEmail = mailData.get("toEmail");
+        String subject = mailData.get("subject");
+        String content = mailData.get("content");
+
+        // 3. Validation des données
+        if (toEmail == null || toEmail.trim().isEmpty() || subject == null || subject.trim().isEmpty() || content == null || content.trim().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                    "success", false,
+                    "message", "Les champs 'toEmail', 'subject' et 'content' sont requis."
+            ));
+        }
+
+        try {
+            // 4. Utilisation du service EmailService pour envoyer l'email
+            // (Assurez-vous que votre EmailService a bien une méthode qui prend (to, subject, text))
+            emailService.sendSupportEmail(toEmail, subject, content); // Réutilisation d'une méthode générique
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "L'email a été envoyé avec succès à: " + toEmail
+            ));
+
+        } catch (Exception e) {
+            System.err.println("Erreur lors de l'envoi de l'email générique à " + toEmail + " : " + e.getMessage());
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "success", false,
+                    "message", "Erreur lors de l'envoi de l'email. Veuillez vérifier les logs du serveur."
+            ));
+        }
+    }
+
+
+    // -------------------------------------------------------------------------
+    // 4. ENDPOINT POUR ENVOYER UN EMAIL AU SUPPORT (AUTHENTIFIÉ)
+    // -------------------------------------------------------------------------
+
+    @PostMapping("/send-to-support")
+    public ResponseEntity<Map<String, Object>> sendEmailToSupport(
+            @RequestBody Map<String, String> emailData,
+            HttpSession session) {
+
+        // ... (Logique inchangée pour sendEmailToSupport)
+        Long clientId = (Long) session.getAttribute("USER_ID");
+
+        if (clientId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                    "success", false,
+                    "message", "Accès refusé. Veuillez vous connecter."
+            ));
+        }
+
         String subject = emailData.get("subject");
         String content = emailData.get("content");
-        String userEmail = emailData.get("userEmail"); // Email de l'utilisateur pour réponse
+        String userEmail = emailData.get("userEmail");
 
-        // Validation des données requises
         if (subject == null || subject.trim().isEmpty()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
                     "success", false,
@@ -176,7 +226,6 @@ public class EmailController {
             ));
         }
 
-        // 3. Récupération des informations du client
         Optional<Client> clientOpt = clientService.getClientById(clientId);
         if (clientOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
@@ -190,13 +239,10 @@ public class EmailController {
         String clientName = client.getFirstName() + " " + client.getLastName();
 
         try {
-            // 4. Construction du contenu complet de l'email
             String fullContent = buildSupportEmailContent(clientName, clientEmail, content, clientId);
 
-            // 5. Envoi de l'email au support MyLb
             emailService.sendSupportEmail("mylbmakeyoulifebetter@gmail.com", subject, fullContent);
 
-            // 6. Optionnel: Envoi d'une copie à l'utilisateur
             try {
                 String userConfirmationContent = buildUserConfirmationEmailContent(subject, content);
                 emailService.sendSupportEmail(clientEmail,
@@ -204,7 +250,6 @@ public class EmailController {
                         userConfirmationContent);
             } catch (Exception e) {
                 System.err.println("Erreur lors de l'envoi de la confirmation à l'utilisateur: " + e.getMessage());
-                // On continue même si l'envoi de confirmation échoue
             }
 
             return ResponseEntity.ok(Map.of(
@@ -269,22 +314,20 @@ public class EmailController {
     }
 
     // -------------------------------------------------------------------------
-    // 4. ENDPOINT POUR ENVOYER UN EMAIL DE SUPPORT SANS AUTHENTIFICATION
-    // (Pour le chat support public)
+    // 5. ENDPOINT POUR ENVOYER UN EMAIL DE SUPPORT SANS AUTHENTIFICATION
     // -------------------------------------------------------------------------
 
     @PostMapping("/public/support-request")
     public ResponseEntity<Map<String, Object>> sendPublicSupportRequest(
             @RequestBody Map<String, String> supportData) {
 
-        // 1. Récupération des données
+        // ... (Logique inchangée pour sendPublicSupportRequest)
         String subject = supportData.get("subject");
         String content = supportData.get("content");
         String userName = supportData.get("userName");
         String userEmail = supportData.get("userEmail");
         String phone = supportData.get("phone");
 
-        // Validation des données requises
         if (subject == null || subject.trim().isEmpty()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
                     "success", false,
@@ -307,13 +350,10 @@ public class EmailController {
         }
 
         try {
-            // 2. Construction du contenu pour le support
             String fullContent = buildPublicSupportEmailContent(userName, userEmail, phone, content);
 
-            // 3. Envoi de l'email au support
             emailService.sendSupportEmail("mylbmakeyoulifebetter@gmail.com", subject, fullContent);
 
-            // 4. Envoi de la confirmation à l'utilisateur
             try {
                 String userConfirmationContent = buildPublicUserConfirmationEmailContent(subject, content, userName);
                 emailService.sendSupportEmail(userEmail,
