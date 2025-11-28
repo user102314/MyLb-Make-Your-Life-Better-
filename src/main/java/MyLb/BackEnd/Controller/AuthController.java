@@ -109,9 +109,15 @@ public class AuthController {
 
         if (clientOpt.isPresent()) {
             Client client = clientOpt.get();
+            // Retourner toutes les informations nécessaires pour le frontend
             return ResponseEntity.ok(
                     Map.of(
-                            "firstName", client.getFirstName()
+                            "clientId", client.getClientId(),
+                            "id", client.getClientId(), // Alias pour compatibilité
+                            "firstName", client.getFirstName() != null ? client.getFirstName() : "",
+                            "lastName", client.getLastName() != null ? client.getLastName() : "",
+                            "email", client.getEmail() != null ? client.getEmail() : "",
+                            "role", client.getRole() != null ? client.getRole() : "USER"
                     )
             );
         } else {
@@ -120,6 +126,33 @@ public class AuthController {
                     Collections.singletonMap("message", "Client introuvable.")
             );
         }
+    }
+
+    /**
+     * Endpoint to get user ID for WebSocket connection
+     * Frontend can call this before connecting to WebSocket to get the user ID
+     */
+    @GetMapping("/websocket/user-id")
+    public ResponseEntity<?> getWebSocketUserId(HttpSession session) {
+        Long userId = (Long) session.getAttribute("USER_ID");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                    Map.of(
+                            "success", false,
+                            "message", "Utilisateur non authentifié. Veuillez vous reconnecter.",
+                            "userId", null
+                    )
+            );
+        }
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "userId", userId,
+                        "message", "User ID retrieved successfully"
+                )
+        );
     }
 
     @PutMapping("/me")
