@@ -23,13 +23,6 @@ public class GoogleAuthService {
         return gAuth.createCredentials();
     }
 
-    /**
-     * 🚨 CORRECTION FINALE : Génère l'URL de provisionnement (otpauth://) manuellement.
-     * C'est le format que Google Authenticator et autres applications TOTP attendent.
-     * @param secret La clé secrète Base32.
-     * @param username L'email ou nom d'utilisateur.
-     * @return L'URL encodée pour la génération du QR Code.
-     */
     public String getQrCodeUrl(String secret, String username) {
         try {
             // S'assurer que les caractères spéciaux dans le nom d'utilisateur et l'émetteur sont encodés

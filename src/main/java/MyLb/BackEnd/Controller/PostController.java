@@ -64,7 +64,16 @@ public class PostController {
         }
     }
 
-
+    @GetMapping
+    public ResponseEntity<List<Post>> getAllPosts() {
+        try {
+            List<Post> posts = postService.getAllPosts();
+            return new ResponseEntity<>(posts, HttpStatus.OK);
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la récupération des posts: " + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
     // ------------------------------------------------------------------
     // 2. AFFICHER LES POSTS DE L'UTILISATEUR CONNECTÉ
     // ------------------------------------------------------------------

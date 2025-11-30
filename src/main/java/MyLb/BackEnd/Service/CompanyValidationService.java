@@ -12,8 +12,6 @@ public interface CompanyValidationService {
                                          MultipartFile pieceIdentiteRepresentantLegal,
                                          MultipartFile statutsSociete,
                                          MultipartFile justificatifDomiciliationCommerciale) throws IOException;
-
-
     CompanyValidation getValidationData(Long companyId);
 
     boolean isLegallyComplete(Long companyId);
