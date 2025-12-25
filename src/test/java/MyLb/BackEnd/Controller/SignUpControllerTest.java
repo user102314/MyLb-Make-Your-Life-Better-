@@ -1,5 +1,4 @@
 package MyLb.BackEnd.Controller;
-
 import MyLb.BackEnd.Model.Entities.Client;
 import MyLb.BackEnd.Model.Entities.SelfDetail;
 import MyLb.BackEnd.Model.Entities.CheckVerification;
@@ -17,10 +16,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
-
 import java.time.LocalDate;
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
